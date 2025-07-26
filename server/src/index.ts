@@ -2,6 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import authRoutes from './routes/auth';
 
 dotenv.config();
 
@@ -15,6 +16,8 @@ app.use(express.json());
 app.get('/', (_req, res) => {
     res.send('DevMatch API is running 🚀');
 });
+
+app.use('/api/auth', authRoutes);
 
 // MongoDB connection
 mongoose
