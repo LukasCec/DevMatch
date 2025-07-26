@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/user';
 import discoverRoutes from './routes/discover';
+import matchRoutes from './routes/match';
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ app.get('/', (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/discover', discoverRoutes);
+app.use('/api/match', matchRoutes);
 
 // MongoDB connection
 mongoose
