@@ -2,11 +2,18 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import {jwtDecode} from 'jwt-decode';
 
 export default function LoginPage() {
     const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+
+    interface JWTPayload {
+        id: string;
+        email: string;
+        name: string;
+    }
 
     const handleLogin = async () => {
         const res = await fetch('http://localhost:5000/api/auth/login', {
@@ -18,12 +25,16 @@ export default function LoginPage() {
         if (res.ok) {
             const data = await res.json();
             localStorage.setItem('token', data.token);
+
+
+            const decoded: JWTPayload = jwtDecode(data.token);
+            localStorage.setItem('userId', decoded.id);
+
             router.push('/dashboard');
         } else {
             alert('Neplatné prihlasovacie údaje');
         }
     };
-
     return (
         <div className="max-w-md mx-auto mt-20">
             <h1 className="text-2xl font-bold mb-4">Prihlásenie</h1>

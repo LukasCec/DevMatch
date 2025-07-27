@@ -6,6 +6,7 @@ import authRoutes from './routes/auth';
 import userRoutes from './routes/user';
 import discoverRoutes from './routes/discover';
 import matchRoutes from './routes/match';
+import messageRoutes from './routes/messageRoutes';
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/discover', discoverRoutes);
 app.use('/api/match', matchRoutes);
+app.use('/api/messages', messageRoutes);
 
 // MongoDB connection
 mongoose
