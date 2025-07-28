@@ -20,6 +20,8 @@ const io = new Server(server, {
     },
 });
 
+const onlineUsers = new Map<string, string>();
+
 app.use(cors());
 app.use(express.json());
 
@@ -32,26 +34,40 @@ app.use('/api/match', matchRoutes);
 io.on('connection', (socket) => {
     console.log('🟢 User connected:', socket.id);
 
+    socket.on('join', (userId: string) => {
+        onlineUsers.set(userId, socket.id);
+        io.emit('onlineUsers', Array.from(onlineUsers.keys()));
+    });
+
     socket.on('sendMessage', (data) => {
-        // emit message to receiver
-        io.to(data.receiver).emit('newMessage', data);
+        const receiverSocketId = onlineUsers.get(data.receiver);
+        if (receiverSocketId) {
+            io.to(receiverSocketId).emit('newMessage', data);
+        }
     });
-
-    socket.on('join', (userId) => {
-        socket.join(userId);
-    });
-
 
     socket.on('typing', ({ from, to }) => {
-        io.to(to).emit('typing', from);
+        const toSocketId = onlineUsers.get(to);
+        if (toSocketId) {
+            io.to(toSocketId).emit('typing', from);
+        }
     });
 
-
     socket.on('stopTyping', ({ from, to }) => {
-        io.to(to).emit('stopTyping', from);
+        const toSocketId = onlineUsers.get(to);
+        if (toSocketId) {
+            io.to(toSocketId).emit('stopTyping', from);
+        }
     });
 
     socket.on('disconnect', () => {
+        for (const [userId, sockId] of onlineUsers.entries()) {
+            if (sockId === socket.id) {
+                onlineUsers.delete(userId);
+                break;
+            }
+        }
+        io.emit('onlineUsers', Array.from(onlineUsers.keys()));
         console.log('🔴 User disconnected:', socket.id);
     });
 });

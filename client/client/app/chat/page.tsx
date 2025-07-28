@@ -39,32 +39,14 @@ export default function ChatPage() {
     const [input, setInput] = useState('');
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [typing, setTyping] = useState(false);
+    const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
+    const [unread, setUnread] = useState<Record<string, number>>({});
+    const [lastMessages, setLastMessages] = useState<Record<string, Message | null>>({});
     const messagesEndRef = useRef<HTMLDivElement>(null);
-
-    const [unread, setUnread] = useState<Record<string, number>>({}); // počet správ
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
-
-    useEffect(() => {
-        socket.on('typing', (fromUserId: string) => {
-            if (fromUserId === otherUserId) {
-                setTyping(true);
-            }
-        });
-
-        socket.on('stopTyping', (fromUserId: string) => {
-            if (fromUserId === otherUserId) {
-                setTyping(false);
-            }
-        });
-
-        return () => {
-            socket.off('typing');
-            socket.off('stopTyping');
-        };
-    }, [otherUserId]);
 
     useEffect(() => {
         const id = getUserIdFromToken();
@@ -73,14 +55,57 @@ export default function ChatPage() {
             socket.connect();
             socket.emit('join', id);
         }
-
-        return () => {
-            socket.disconnect();
-        };
+        return () => socket.disconnect();
     }, []);
 
     useEffect(() => {
-        authFetch('http://localhost:5000/api/match').then(setUsers);
+        socket.on('onlineUsers', (ids: string[]) => {
+            setOnlineUserIds(ids);
+        });
+
+        socket.on('typing', (fromUserId: string) => {
+            if (fromUserId === otherUserId) setTyping(true);
+        });
+
+        socket.on('stopTyping', (fromUserId: string) => {
+            if (fromUserId === otherUserId) setTyping(false);
+        });
+
+        socket.on('newMessage', (msg: Message) => {
+            if (msg.sender === otherUserId || msg.receiver === otherUserId) {
+                setMessages((prev) => [...prev, msg]);
+                setLastMessages((prev) => ({ ...prev, [otherUserId]: msg }));
+            } else {
+                setUnread((prev) => ({
+                    ...prev,
+                    [msg.sender]: (prev[msg.sender] || 0) + 1,
+                }));
+                setLastMessages((prev) => ({ ...prev, [msg.sender]: msg }));
+            }
+        });
+
+        return () => {
+            socket.off('onlineUsers');
+            socket.off('typing');
+            socket.off('stopTyping');
+            socket.off('newMessage');
+        };
+    }, [otherUserId]);
+
+    useEffect(() => {
+        authFetch('http://localhost:5000/api/match').then(async (matchedUsers: User[]) => {
+            setUsers(matchedUsers);
+
+            // Fetch last message for each match
+            const messagesMap: Record<string, Message | null> = {};
+            await Promise.all(
+                matchedUsers.map(async (user) => {
+                    const msgs = await authFetch(`http://localhost:5000/api/messages/${user._id}`);
+                    messagesMap[user._id] = msgs.length > 0 ? msgs[msgs.length - 1] : null;
+                })
+            );
+            setLastMessages(messagesMap);
+        });
     }, []);
 
     useEffect(() => {
@@ -95,31 +120,12 @@ export default function ChatPage() {
     }, [otherUserId]);
 
     useEffect(() => {
-        socket.on('newMessage', (msg: Message) => {
-            if (msg.sender === otherUserId || msg.receiver === otherUserId) {
-                setMessages((prev) => [...prev, msg]);
-            } else {
-                setUnread((prev) => ({
-                    ...prev,
-                    [msg.sender]: (prev[msg.sender] || 0) + 1,
-                }));
-            }
-        });
-
-        return () => {
-            socket.off('newMessage');
-        };
-    }, [otherUserId]);
-
-    useEffect(() => {
         scrollToBottom();
     }, [messages]);
 
     let typingTimeout: NodeJS.Timeout;
-
     const handleTyping = () => {
         if (!currentUserId || !otherUserId) return;
-
         socket.emit('typing', { from: currentUserId, to: otherUserId });
 
         clearTimeout(typingTimeout);
@@ -138,7 +144,6 @@ export default function ChatPage() {
         };
 
         socket.emit('sendMessage', message);
-
         await authFetch(`http://localhost:5000/api/messages/${otherUserId}`, {
             method: 'POST',
             body: JSON.stringify({ content: input }),
@@ -166,11 +171,22 @@ export default function ChatPage() {
                                 return updated;
                             });
                         }}
-                        className={`cursor-pointer p-2 rounded hover:bg-blue-100 flex justify-between items-center ${
+                        className={`cursor-pointer p-2 rounded hover:bg-blue-100 flex justify-between items-start ${
                             user._id === otherUserId ? 'bg-blue-200' : ''
                         }`}
                     >
-                        <span>{user.name}</span>
+                        <div className="flex flex-col max-w-[180px]">
+                            <span className="font-medium flex items-center gap-2">
+                                {user.name}
+                                {onlineUserIds.includes(user._id) && (
+                                    <span className="w-2 h-2 bg-green-500 rounded-full" />
+                                )}
+                            </span>
+                            <span className="text-xs text-gray-500 truncate">
+                                {lastMessages[user._id]?.content ?? ''}
+                            </span>
+                        </div>
+
                         {unread[user._id] > 0 && (
                             <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center">
                                 {unread[user._id]}
@@ -219,7 +235,6 @@ export default function ChatPage() {
                                 }}
                                 placeholder="Napíš správu..."
                             />
-
                             <button
                                 onClick={handleSend}
                                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
