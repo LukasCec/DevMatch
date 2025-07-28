@@ -37,9 +37,18 @@ io.on('connection', (socket) => {
         io.to(data.receiver).emit('newMessage', data);
     });
 
-    socket.on('join', (userId: string) => {
+    socket.on('join', (userId) => {
         socket.join(userId);
-        console.log(`📥 User ${userId} joined room`);
+    });
+
+
+    socket.on('typing', ({ from, to }) => {
+        io.to(to).emit('typing', from);
+    });
+
+
+    socket.on('stopTyping', ({ from, to }) => {
+        io.to(to).emit('stopTyping', from);
     });
 
     socket.on('disconnect', () => {

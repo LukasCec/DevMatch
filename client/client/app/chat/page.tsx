@@ -38,12 +38,33 @@ export default function ChatPage() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
+    const [typing, setTyping] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const [unread, setUnread] = useState<Record<string, number>>({}); // počet správ
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
+
+    useEffect(() => {
+        socket.on('typing', (fromUserId: string) => {
+            if (fromUserId === otherUserId) {
+                setTyping(true);
+            }
+        });
+
+        socket.on('stopTyping', (fromUserId: string) => {
+            if (fromUserId === otherUserId) {
+                setTyping(false);
+            }
+        });
+
+        return () => {
+            socket.off('typing');
+            socket.off('stopTyping');
+        };
+    }, [otherUserId]);
 
     useEffect(() => {
         const id = getUserIdFromToken();
@@ -77,6 +98,11 @@ export default function ChatPage() {
         socket.on('newMessage', (msg: Message) => {
             if (msg.sender === otherUserId || msg.receiver === otherUserId) {
                 setMessages((prev) => [...prev, msg]);
+            } else {
+                setUnread((prev) => ({
+                    ...prev,
+                    [msg.sender]: (prev[msg.sender] || 0) + 1,
+                }));
             }
         });
 
@@ -88,6 +114,19 @@ export default function ChatPage() {
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    let typingTimeout: NodeJS.Timeout;
+
+    const handleTyping = () => {
+        if (!currentUserId || !otherUserId) return;
+
+        socket.emit('typing', { from: currentUserId, to: otherUserId });
+
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+            socket.emit('stopTyping', { from: currentUserId, to: otherUserId });
+        }, 1000);
+    };
 
     const handleSend = async () => {
         if (!input.trim() || !otherUserId || !currentUserId) return;
@@ -119,12 +158,24 @@ export default function ChatPage() {
                 {users.map((user) => (
                     <div
                         key={user._id}
-                        onClick={() => router.push(`/chat?user=${user._id}`)}
-                        className={`cursor-pointer p-2 rounded hover:bg-blue-100 ${
+                        onClick={() => {
+                            router.push(`/chat?user=${user._id}`);
+                            setUnread((prev) => {
+                                const updated = { ...prev };
+                                delete updated[user._id];
+                                return updated;
+                            });
+                        }}
+                        className={`cursor-pointer p-2 rounded hover:bg-blue-100 flex justify-between items-center ${
                             user._id === otherUserId ? 'bg-blue-200' : ''
                         }`}
                     >
-                        {user.name}
+                        <span>{user.name}</span>
+                        {unread[user._id] > 0 && (
+                            <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center">
+                                {unread[user._id]}
+                            </span>
+                        )}
                     </div>
                 ))}
             </div>
@@ -134,6 +185,9 @@ export default function ChatPage() {
                 {otherUserId ? (
                     <>
                         <div className="flex-1 overflow-y-auto bg-gray-50 p-2 rounded flex flex-col">
+                            {typing && (
+                                <div className="text-sm text-blue-500 italic mb-2">Používateľ píše...</div>
+                            )}
                             {messages.map((msg, index) => (
                                 <div
                                     key={index}
@@ -153,9 +207,19 @@ export default function ChatPage() {
                                 type="text"
                                 className="flex-1 p-2 border rounded"
                                 value={input}
-                                onChange={(e) => setInput(e.target.value)}
+                                onChange={(e) => {
+                                    setInput(e.target.value);
+                                    handleTyping();
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleSend();
+                                    }
+                                }}
                                 placeholder="Napíš správu..."
                             />
+
                             <button
                                 onClick={handleSend}
                                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
