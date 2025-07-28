@@ -46,10 +46,10 @@ router.get('/', authMiddleware, async (req: any, res) => {
     try {
         const userId = req.userId;
 
-        // Nájde všetky matchy, kde si medzi users
+
         const matches = await Match.find({ users: userId }).populate('users', '-password');
 
-        // Odstránime sám seba zo zoznamu
+
         const matchedUsers = matches.map((match) =>
             match.users.find((user: any) => user._id.toString() !== userId)
         );

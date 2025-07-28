@@ -16,7 +16,7 @@ router.get('/me', authMiddleware, async (req: any, res) => {
     }
 });
 
-// PUT /api/users/me
+
 router.put('/me', authMiddleware, async (req: any, res) => {
     try {
         const { techStack, goal, level, availability } = req.body;

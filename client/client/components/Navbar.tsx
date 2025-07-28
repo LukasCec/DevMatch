@@ -8,6 +8,7 @@ const navItems = [
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/discover', label: 'Objavuj' },
     { href: '/matches', label: 'Matchy' },
+    { href: '/chat', label: 'Chat' },
     { href: '/profile', label: 'Môj profil' },
 ];
 
