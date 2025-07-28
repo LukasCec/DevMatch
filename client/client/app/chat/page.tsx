@@ -43,6 +43,11 @@ export default function ChatPage() {
     const [unread, setUnread] = useState<Record<string, number>>({});
     const [lastMessages, setLastMessages] = useState<Record<string, Message | null>>({});
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messageSound = useRef<HTMLAudioElement | null>(null);
+
+    useEffect(() => {
+        messageSound.current = new Audio('/sounds/message.mp3');
+    }, []);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -82,6 +87,8 @@ export default function ChatPage() {
                 }));
                 setLastMessages((prev) => ({ ...prev, [msg.sender]: msg }));
             }
+
+            messageSound.current?.play();
         });
 
         return () => {
@@ -207,13 +214,18 @@ export default function ChatPage() {
                             {messages.map((msg, index) => (
                                 <div
                                     key={index}
-                                    className={`mb-2 p-2 rounded max-w-[80%] ${
+                                    className={`mb-2 p-2 rounded max-w-[80%] text-sm ${
                                         msg.sender === currentUserId
                                             ? 'bg-blue-500 text-white self-end'
                                             : 'bg-gray-200 self-start'
                                     }`}
                                 >
-                                    {msg.content}
+                                    <div>{msg.content}</div>
+                                    {msg.createdAt && (
+                                        <div className="text-xs text-gray-300 mt-1 text-right">
+                                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                             <div ref={messagesEndRef} />
