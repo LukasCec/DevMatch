@@ -7,12 +7,14 @@ import messageRoutes from './routes/messageRoutes';
 import matchRoutes from './routes/match';
 import userRoutes from './routes/user';
 import { Server } from 'socket.io';
+import jwt from 'jsonwebtoken';
 import http from 'http';
 
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+
 const io = new Server(server, {
     cors: {
         origin: 'http://localhost:3000',
@@ -31,14 +33,29 @@ app.use('/api/user', userRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/match', matchRoutes);
 
-// Socket.IO
-io.on('connection', (socket) => {
-    console.log('🟢 User connected:', socket.id);
 
-    socket.on('join', (userId: string) => {
-        onlineUsers.set(userId, socket.id);
-        io.emit('onlineUsers', Array.from(onlineUsers.keys()));
-    });
+io.use((socket, next) => {
+    const token = socket.handshake.auth?.token;
+    if (!token) {
+        return next(new Error('Authentication token missing'));
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET!);
+        (socket as any).userId = (decoded as any).id;
+        next();
+    } catch (err) {
+        console.error('JWT verification failed:', err);
+        next(new Error('Authentication failed'));
+    }
+});
+
+io.on('connection', (socket) => {
+    const userId = (socket as any).userId;
+    console.log('🟢 User connected:', userId);
+
+    onlineUsers.set(userId, socket.id);
+    io.emit('onlineUsers', Array.from(onlineUsers.keys()));
 
     socket.on('sendMessage', (data) => {
         const receiverSocketId = onlineUsers.get(data.receiver);
@@ -62,14 +79,14 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        for (const [userId, sockId] of onlineUsers.entries()) {
+        for (const [id, sockId] of onlineUsers.entries()) {
             if (sockId === socket.id) {
-                onlineUsers.delete(userId);
+                onlineUsers.delete(id);
                 break;
             }
         }
         io.emit('onlineUsers', Array.from(onlineUsers.keys()));
-        console.log('🔴 User disconnected:', socket.id);
+        console.log('🔴 User disconnected:', userId);
     });
 });
 

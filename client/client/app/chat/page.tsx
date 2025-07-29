@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { authFetch } from '@/lib/api';
 import { useSearchParams, useRouter } from 'next/navigation';
-import socket from '@/lib/socket';
+import socket, { connectSocket } from '@/lib/socket';
 
 interface User {
     _id: string;
@@ -61,7 +61,7 @@ export default function ChatPage() {
             const id = getUserIdFromToken();
             if (id) {
                 setCurrentUserId(id);
-                socket.connect();
+                connectSocket();
                 socket.emit('join', id);
 
                 const data = await authFetch('http://localhost:5000/api/user/me');
