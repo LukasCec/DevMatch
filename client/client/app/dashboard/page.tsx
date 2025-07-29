@@ -7,7 +7,7 @@ export default function DashboardPage() {
     const [user, setUser] = useState<any>(null);
 
     useEffect(() => {
-        authFetch('http://localhost:5000/api/users/me').then(setUser);
+        authFetch('http://localhost:5000/api/user/me').then(setUser);
     }, []);
 
     if (!user) return <div>Načítavam...</div>;

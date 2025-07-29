@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import messageRoutes from './routes/messageRoutes';
 import matchRoutes from './routes/match';
-
+import userRoutes from './routes/user';
 import { Server } from 'socket.io';
 import http from 'http';
 
@@ -27,6 +27,7 @@ app.use(express.json());
 
 app.get('/', (_req, res) => res.send('DevMatch API is running 🚀'));
 app.use('/api/auth', authRoutes);
+app.use('/api/user', userRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/match', matchRoutes);
 

@@ -8,6 +8,7 @@ import socket from '@/lib/socket';
 interface User {
     _id: string;
     name: string;
+    avatar?: string;
 }
 
 interface Message {
@@ -182,22 +183,29 @@ export default function ChatPage() {
                             user._id === otherUserId ? 'bg-blue-200' : ''
                         }`}
                     >
-                        <div className="flex flex-col max-w-[180px]">
-                            <span className="font-medium flex items-center gap-2">
-                                {user.name}
-                                {onlineUserIds.includes(user._id) && (
-                                    <span className="w-2 h-2 bg-green-500 rounded-full" />
-                                )}
-                            </span>
-                            <span className="text-xs text-gray-500 truncate">
-                                {lastMessages[user._id]?.content ?? ''}
-                            </span>
+                        <div className="flex items-center gap-3 max-w-[180px]">
+                            <img
+                                src={user.avatar || '/avatar1.png'}
+                                alt="avatar"
+                                className="w-8 h-8 rounded-full object-cover"
+                            />
+                            <div className="flex flex-col">
+                                  <span className="font-medium flex items-center gap-2">
+                                    {user.name}
+                                      {onlineUserIds.includes(user._id) && (
+                                          <span className="w-2 h-2 bg-green-500 rounded-full" />
+                                      )}
+                                  </span>
+                                <span className="text-xs text-gray-500 truncate">
+                                    {lastMessages[user._id]?.content ?? ''}
+                                </span>
+                            </div>
                         </div>
 
                         {unread[user._id] > 0 && (
                             <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center">
-                                {unread[user._id]}
-                            </span>
+      {unread[user._id]}
+    </span>
                         )}
                     </div>
                 ))}

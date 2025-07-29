@@ -4,7 +4,7 @@ import { User } from '../models/User';
 
 const router = express.Router();
 
-// GET /api/users/me
+// GET /api/user/me
 router.get('/me', authMiddleware, async (req: any, res) => {
     try {
         const user = await User.findById(req.userId).select('-password');
@@ -19,11 +19,11 @@ router.get('/me', authMiddleware, async (req: any, res) => {
 
 router.put('/me', authMiddleware, async (req: any, res) => {
     try {
-        const { techStack, goal, level, availability } = req.body;
+        const { techStack, goal, level, availability, avatar } = req.body;
 
         const updatedUser = await User.findByIdAndUpdate(
             req.userId,
-            { techStack, goal, level, availability },
+            { techStack, goal, level, availability, avatar },
             { new: true }
         ).select('-password');
 
