@@ -39,6 +39,8 @@ export default function ChatPage() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [otherUser, setOtherUser] = useState<User | null>(null);
     const [typing, setTyping] = useState(false);
     const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
     const [unread, setUnread] = useState<Record<string, number>>({});
@@ -55,12 +57,19 @@ export default function ChatPage() {
     };
 
     useEffect(() => {
-        const id = getUserIdFromToken();
-        if (id) {
-            setCurrentUserId(id);
-            socket.connect();
-            socket.emit('join', id);
-        }
+        const fetchCurrentUser = async () => {
+            const id = getUserIdFromToken();
+            if (id) {
+                setCurrentUserId(id);
+                socket.connect();
+                socket.emit('join', id);
+
+                const data = await authFetch('http://localhost:5000/api/user/me');
+                setCurrentUser(data);
+            }
+        };
+        fetchCurrentUser();
+
         return () => socket.disconnect();
     }, []);
 
@@ -80,7 +89,7 @@ export default function ChatPage() {
         socket.on('newMessage', (msg: Message) => {
             if (msg.sender === otherUserId || msg.receiver === otherUserId) {
                 setMessages((prev) => [...prev, msg]);
-                setLastMessages((prev) => ({ ...prev, [otherUserId]: msg }));
+                setLastMessages((prev) => ({ ...prev, [otherUserId!]: msg }));
             } else {
                 setUnread((prev) => ({
                     ...prev,
@@ -104,7 +113,6 @@ export default function ChatPage() {
         authFetch('http://localhost:5000/api/match').then(async (matchedUsers: User[]) => {
             setUsers(matchedUsers);
 
-            // Fetch last message for each match
             const messagesMap: Record<string, Message | null> = {};
             await Promise.all(
                 matchedUsers.map(async (user) => {
@@ -113,8 +121,11 @@ export default function ChatPage() {
                 })
             );
             setLastMessages(messagesMap);
+
+            const found = matchedUsers.find((u) => u._id === otherUserId);
+            if (found) setOtherUser(found);
         });
-    }, []);
+    }, [otherUserId]);
 
     useEffect(() => {
         if (!otherUserId) return;
@@ -162,7 +173,6 @@ export default function ChatPage() {
         setMessages(updated);
         scrollToBottom();
     };
-
     return (
         <div className="flex max-w-5xl mx-auto mt-10 h-[600px] border rounded overflow-hidden">
             {/* Sidebar */}
@@ -219,23 +229,35 @@ export default function ChatPage() {
                             {typing && (
                                 <div className="text-sm text-blue-500 italic mb-2">Používateľ píše...</div>
                             )}
-                            {messages.map((msg, index) => (
-                                <div
-                                    key={index}
-                                    className={`mb-2 p-2 rounded max-w-[80%] text-sm ${
-                                        msg.sender === currentUserId
-                                            ? 'bg-blue-500 text-white self-end'
-                                            : 'bg-gray-200 self-start'
-                                    }`}
-                                >
-                                    <div>{msg.content}</div>
-                                    {msg.createdAt && (
-                                        <div className="text-xs text-gray-300 mt-1 text-right">
-                                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {messages.map((msg, index) => {
+                                const isOwn = msg.sender === currentUserId;
+                                return (
+                                    <div key={index} className={`mb-2 flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                                        {!isOwn && (
+                                            <img
+                                                src={otherUser?.avatar || '/avatar1.png'}
+                                                alt="avatar"
+                                                className="w-8 h-8 rounded-full object-cover mr-2 self-end"
+                                            />
+                                        )}
+                                        <div
+                                            className={`p-2 rounded max-w-[80%] text-sm ${
+                                                isOwn ? 'bg-blue-500 text-white self-end' : 'bg-gray-200 self-start'
+                                            }`}
+                                        >
+                                            <div>{msg.content}</div>
+                                            {msg.createdAt && (
+                                                <div className="text-xs text-gray-400 mt-1 text-right">
+                                                    {new Date(msg.createdAt).toLocaleTimeString([], {
+                                                        hour: '2-digit',
+                                                        minute: '2-digit',
+                                                    })}
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-                                </div>
-                            ))}
+                                    </div>
+                                );
+                            })}
                             <div ref={messagesEndRef} />
                         </div>
                         <div className="flex gap-2 mt-2">
