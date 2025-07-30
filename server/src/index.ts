@@ -9,6 +9,7 @@ import userRoutes from './routes/user';
 import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import http from 'http';
+import { Message } from './models/message';
 
 dotenv.config();
 
@@ -40,13 +41,7 @@ io.use((socket, next) => {
         return next(new Error('Authentication token missing'));
     }
 
-    socket.on('markRead', ({ from, to }) => {
-        const toSocketId = onlineUsers.get(from);
 
-        if (toSocketId) {
-            io.to(toSocketId).emit('readMessages', { readerId: to });
-        }
-    });
 
 
     try {
@@ -66,12 +61,27 @@ io.on('connection', (socket) => {
     onlineUsers.set(userId, socket.id);
     io.emit('onlineUsers', Array.from(onlineUsers.keys()));
 
+    socket.on('markRead', async ({ from, to }) => {
+
+        await Message.updateMany(
+            { sender: from, receiver: to, isRead: false },
+            { isRead: true }
+        );
+
+        const toSocketId = onlineUsers.get(from);
+        if (toSocketId) {
+            io.to(toSocketId).emit('readMessages', { readerId: to });
+        }
+    });
+
     socket.on('sendMessage', (data) => {
         const receiverSocketId = onlineUsers.get(data.receiver);
         if (receiverSocketId) {
             io.to(receiverSocketId).emit('newMessage', data);
         }
     });
+
+
 
     socket.on('typing', ({ from, to }) => {
         const toSocketId = onlineUsers.get(to);

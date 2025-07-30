@@ -48,6 +48,7 @@ export default function ChatPage() {
     const [lastMessages, setLastMessages] = useState<Record<string, Message | null>>({});
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messageSound = useRef<HTMLAudioElement | null>(null);
+    const [chatOpenedAt, setChatOpenedAt] = useState<number>(Date.now());
 
     useEffect(() => {
         messageSound.current = new Audio('/sounds/message.mp3');
@@ -75,6 +76,12 @@ export default function ChatPage() {
     }, []);
 
     useEffect(() => {
+        if (otherUserId) {
+            setChatOpenedAt(Date.now());
+        }
+    }, [otherUserId]);
+
+    useEffect(() => {
         socket.on('onlineUsers', (ids: string[]) => {
             setOnlineUserIds(ids);
         });
@@ -88,16 +95,20 @@ export default function ChatPage() {
         });
 
         socket.on('newMessage', async (msg: Message) => {
-            if (msg.sender === otherUserId) {
+            const isInCurrentChat = msg.sender === otherUserId;
+            const isAfterChatOpened = msg.createdAt && new Date(msg.createdAt).getTime() > chatOpenedAt;
 
-                await authFetch(`http://localhost:5000/api/messages/${msg.sender}/read`, {
-                    method: 'PUT',
-                });
-            }
+            if (isInCurrentChat) {
+                setMessages((prev) => [...prev, msg]);
+                setLastMessages((prev) => ({ ...prev, [otherUserId!]: msg }));
 
-            if (msg.sender === otherUserId || msg.receiver === otherUserId) {
-                setMessages((prev) => [...prev, { ...msg, isRead: true }]);
-                setLastMessages((prev) => ({ ...prev, [otherUserId!]: { ...msg, isRead: true } }));
+                if (isAfterChatOpened && currentUserId) {
+
+                    socket.emit('readMessages', {
+                        readerId: currentUserId,
+                        senderId: msg.sender,
+                    });
+                }
             } else {
                 setUnread((prev) => ({
                     ...prev,
@@ -110,6 +121,7 @@ export default function ChatPage() {
         });
 
         socket.on('readMessages', ({ readerId }) => {
+            // ✅ Označ len poslednú správu ako prečítanú
             setMessages((prev) => {
                 const updated = [...prev];
                 for (let i = updated.length - 1; i >= 0; i--) {
@@ -139,6 +151,7 @@ export default function ChatPage() {
             socket.off('typing');
             socket.off('stopTyping');
             socket.off('newMessage');
+            socket.off('readMessages');
         };
     }, [otherUserId]);
 
@@ -165,16 +178,13 @@ export default function ChatPage() {
 
         const fetchMessages = async () => {
             const res = await authFetch(`http://localhost:5000/api/messages/${otherUserId}`);
-            await authFetch(`http://localhost:5000/api/messages/${otherUserId}/read`, {
-                method: 'PUT'
-            });
             setMessages(res);
-
-            socket.emit('markRead', { from: otherUserId, to: currentUserId });
         };
 
         fetchMessages();
     }, [otherUserId]);
+
+
 
     useEffect(() => {
         scrollToBottom();
@@ -292,9 +302,11 @@ export default function ChatPage() {
                                                     })}
                                                 </div>
                                             )}
-                                            {msg.sender === currentUserId && (msg as any).isRead && (
-                                                <span className="ml-2 text-blue-300">✓✓</span>
-                                            )}
+                                            {msg.sender === currentUserId &&
+                                                messages[messages.length - 1]?._id === msg._id &&
+                                                msg.isRead && (
+                                                    <span className="ml-2 text-blue-300">✓✓</span>
+                                                )}
                                         </div>
                                     </div>
                                 );
