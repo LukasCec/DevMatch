@@ -64,5 +64,21 @@ router.get('/', authMiddleware, async (req: AuthRequest, res) => {
 });
 
 
+router.put('/:userId/read', authMiddleware, async (req: any, res) => {
+    try {
+        const currentUserId = req.userId;
+        const otherUserId = req.params.userId;
+
+        await Message.updateMany(
+            { sender: otherUserId, receiver: currentUserId, isRead: false },
+            { isRead: true }
+        );
+
+        res.status(200).json({ message: 'Messages marked as read' });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 
 export default router;

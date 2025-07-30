@@ -17,6 +17,7 @@ interface Message {
     receiver: string;
     content: string;
     createdAt?: string;
+    isRead?: boolean;
 }
 
 const getUserIdFromToken = (): string | null => {
@@ -62,7 +63,7 @@ export default function ChatPage() {
             if (id) {
                 setCurrentUserId(id);
                 connectSocket();
-                socket.emit('join', id);
+                
 
                 const data = await authFetch('http://localhost:5000/api/user/me');
                 setCurrentUser(data);
@@ -86,10 +87,17 @@ export default function ChatPage() {
             if (fromUserId === otherUserId) setTyping(false);
         });
 
-        socket.on('newMessage', (msg: Message) => {
+        socket.on('newMessage', async (msg: Message) => {
+            if (msg.sender === otherUserId) {
+
+                await authFetch(`http://localhost:5000/api/messages/${msg.sender}/read`, {
+                    method: 'PUT',
+                });
+            }
+
             if (msg.sender === otherUserId || msg.receiver === otherUserId) {
-                setMessages((prev) => [...prev, msg]);
-                setLastMessages((prev) => ({ ...prev, [otherUserId!]: msg }));
+                setMessages((prev) => [...prev, { ...msg, isRead: true }]);
+                setLastMessages((prev) => ({ ...prev, [otherUserId!]: { ...msg, isRead: true } }));
             } else {
                 setUnread((prev) => ({
                     ...prev,
@@ -132,7 +140,12 @@ export default function ChatPage() {
 
         const fetchMessages = async () => {
             const res = await authFetch(`http://localhost:5000/api/messages/${otherUserId}`);
+            await authFetch(`http://localhost:5000/api/messages/${otherUserId}/read`, {
+                method: 'PUT'
+            });
             setMessages(res);
+
+            socket.emit('markRead', { from: otherUserId, to: currentUserId });
         };
 
         fetchMessages();
@@ -253,6 +266,9 @@ export default function ChatPage() {
                                                         minute: '2-digit',
                                                     })}
                                                 </div>
+                                            )}
+                                            {msg.sender === currentUserId && (msg as any).isRead && (
+                                                <span className="ml-2 text-blue-300">✓✓</span>
                                             )}
                                         </div>
                                     </div>
