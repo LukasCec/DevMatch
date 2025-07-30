@@ -40,6 +40,15 @@ io.use((socket, next) => {
         return next(new Error('Authentication token missing'));
     }
 
+    socket.on('markRead', ({ from, to }) => {
+        const toSocketId = onlineUsers.get(from);
+
+        if (toSocketId) {
+            io.to(toSocketId).emit('readMessages', { readerId: to });
+        }
+    });
+
+
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET!);
         (socket as any).userId = (decoded as any).id;
@@ -88,6 +97,8 @@ io.on('connection', (socket) => {
         io.emit('onlineUsers', Array.from(onlineUsers.keys()));
         console.log('🔴 User disconnected:', userId);
     });
+
+
 });
 
 mongoose

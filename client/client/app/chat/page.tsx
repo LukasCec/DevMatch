@@ -109,6 +109,27 @@ export default function ChatPage() {
             messageSound.current?.play();
         });
 
+        socket.on('readMessages', ({ readerId }) => {
+
+            setMessages((prev) =>
+                prev.map((msg) =>
+                    msg.receiver === readerId ? { ...msg, isRead: true } : msg
+                )
+            );
+
+
+            setLastMessages((prev) => {
+                const last = prev[readerId];
+                if (last && last.receiver === readerId) {
+                    return {
+                        ...prev,
+                        [readerId]: { ...last, isRead: true },
+                    };
+                }
+                return prev;
+            });
+        });
+
         return () => {
             socket.off('onlineUsers');
             socket.off('typing');
