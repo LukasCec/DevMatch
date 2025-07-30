@@ -110,13 +110,17 @@ export default function ChatPage() {
         });
 
         socket.on('readMessages', ({ readerId }) => {
-
-            setMessages((prev) =>
-                prev.map((msg) =>
-                    msg.receiver === readerId ? { ...msg, isRead: true } : msg
-                )
-            );
-
+            setMessages((prev) => {
+                const updated = [...prev];
+                for (let i = updated.length - 1; i >= 0; i--) {
+                    const msg = updated[i];
+                    if (msg.receiver === readerId) {
+                        updated[i] = { ...msg, isRead: true };
+                        break;
+                    }
+                }
+                return updated;
+            });
 
             setLastMessages((prev) => {
                 const last = prev[readerId];
