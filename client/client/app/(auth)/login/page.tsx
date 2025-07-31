@@ -38,8 +38,8 @@ export default function LoginPage() {
     return (
         <div className="max-w-md mx-auto mt-20">
             <h1 className="text-2xl font-bold mb-4">Prihlásenie</h1>
-            <input className="w-full mb-2 p-2 border" placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
-            <input className="w-full mb-4 p-2 border" type="password" placeholder="Heslo" onChange={(e) => setPassword(e.target.value)} />
+            <input className="input mb-2 p-2 border" placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
+            <input className="input mb-4 p-2 " type="password" placeholder="Heslo" onChange={(e) => setPassword(e.target.value)} />
             <button className="bg-blue-600 text-white px-4 py-2 rounded" onClick={handleLogin}>Prihlásiť sa</button>
         </div>
     );

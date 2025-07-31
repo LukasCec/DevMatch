@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { authFetch } from '@/lib/api';
 import { Dialog } from '@headlessui/react';
 import { Pencil } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface FormData {
     techStack: string[];
@@ -20,6 +21,8 @@ const defaultAvatars = [
     '/avatars/avatar4.png',
 ];
 
+const levelOptions = ['Junior', 'Mid', 'Senior'];
+
 export default function ProfileForm() {
     const [form, setForm] = useState<FormData>({
         techStack: [],
@@ -31,6 +34,8 @@ export default function ProfileForm() {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [customAvatarUrl, setCustomAvatarUrl] = useState('');
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -47,8 +52,22 @@ export default function ProfileForm() {
         fetchProfile();
     }, []);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        setForm({ ...form, [e.target.name]: e.target.value });
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+                setDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleSubmit = async () => {
+        await authFetch('http://localhost:5000/api/user/me', {
+            method: 'PUT',
+            body: JSON.stringify(form),
+        });
+        alert('Profile saved!');
     };
 
     const handleTechStackChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,97 +81,115 @@ export default function ProfileForm() {
         setCustomAvatarUrl('');
     };
 
-    const handleSubmit = async () => {
-        await authFetch('http://localhost:5000/api/user/me', {
-            method: 'PUT',
-            body: JSON.stringify(form),
-        });
-        alert('Profil bol uložený!');
-    };
-
-    if (loading) return <p>Načítavam profil...</p>;
+    if (loading) return <p className="text-gray-600">Loading profile...</p>;
 
     return (
-        <div className="space-y-6 max-w-xl mx-auto">
-            <div className="relative w-24 h-24">
+        <div className="space-y-8">
+
+            <div onClick={() => setIsModalOpen(true)} className="relative w-24 h-24 cursor-pointer ">
                 <img
                     src={form.avatar}
                     alt="Avatar"
                     className="w-24 h-24 rounded-full object-cover border"
                 />
                 <button
-                    className="absolute bottom-0 right-0 bg-white p-1 rounded-full shadow hover:bg-gray-100"
+                    className="absolute bottom-0 right-0 bg-white p-1 rounded-full shadow hover:bg-gray-100 transition"
                     onClick={() => setIsModalOpen(true)}
                 >
-                    <Pencil size={16} />
+                    <Pencil className="cursor-pointer" size={16} />
                 </button>
             </div>
 
-            <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-                <div>
-                    <label className="block font-semibold mb-1">Technológie</label>
+
+            <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+                <FormGroup label="Tech Stack">
                     <input
-                        className="w-full p-2 border rounded"
                         type="text"
+                        name="techStack"
                         value={form.techStack.join(', ')}
                         onChange={handleTechStackChange}
-                        placeholder="napr. React, Node.js, MongoDB"
+                        placeholder="e.g. React, Node.js, MongoDB"
+                        className="input"
                     />
-                </div>
+                </FormGroup>
 
-                <div>
-                    <label className="block font-semibold mb-1">Cieľ</label>
+                <FormGroup label="Goal">
                     <input
-                        className="w-full p-2 border rounded"
                         type="text"
                         name="goal"
                         value={form.goal}
-                        onChange={handleChange}
-                        placeholder="napr. Chcem parťáka na open source"
+                        onChange={(e) => setForm({ ...form, goal: e.target.value })}
+                        placeholder="e.g. Looking for an open source teammate"
+                        className="input"
                     />
-                </div>
+                </FormGroup>
 
-                <div>
-                    <label className="block font-semibold mb-1">Úroveň</label>
-                    <select
-                        className="w-full p-2 border rounded"
-                        name="level"
-                        value={form.level}
-                        onChange={handleChange}
-                    >
-                        <option value="">-- vyber úroveň --</option>
-                        <option value="junior">Junior</option>
-                        <option value="mid">Mid</option>
-                        <option value="senior">Senior</option>
-                    </select>
-                </div>
+                <FormGroup label="Experience Level">
+                    <div className="relative" ref={dropdownRef}>
+                        <motion.button
+                            onClick={() => setDropdownOpen((prev) => !prev)}
+                            className="w-full text-left px-4 py-2 bg-white input rounded-lg shadow-sm flex justify-between items-center text-sm font-medium text-gray-800 hover:bg-gray-50 transition"
+                            whileTap={{ scale: 0.98 }}
+                        >
+                            {form.level || 'Select level'}
+                            <motion.span
+                                variants={iconVariants}
+                                animate={dropdownOpen ? 'open' : 'closed'}
+                            >
+                                ▼
+                            </motion.span>
+                        </motion.button>
 
-                <div>
-                    <label className="block font-semibold mb-1">Dostupnosť</label>
+                        <motion.ul
+                            initial="closed"
+                            animate={dropdownOpen ? 'open' : 'closed'}
+                            variants={wrapperVariants}
+                            className="absolute z-50 w-full mt-2 p-2 rounded-lg shadow-lg bg-white "
+                        >
+                            {levelOptions.map((level) => (
+                                <motion.li
+                                    key={level}
+                                    variants={itemVariants}
+                                    className="px-4 py-2 text-sm text-gray-700 hover:bg-blue-100 hover:text-blue-600 duration-300 rounded-md cursor-pointer"
+                                    onClick={() => {
+                                        setForm({ ...form, level: level.toLowerCase() });
+                                        setDropdownOpen(false);
+                                    }}
+                                >
+                                    {level}
+                                </motion.li>
+                            ))}
+                        </motion.ul>
+                    </div>
+                </FormGroup>
+
+                <FormGroup label="Availability">
                     <input
-                        className="w-full p-2 border rounded"
                         type="text"
                         name="availability"
                         value={form.availability}
-                        onChange={handleChange}
-                        placeholder="napr. večery, víkendy"
+                        onChange={(e) => setForm({ ...form, availability: e.target.value })}
+                        placeholder="e.g. evenings, weekends"
+                        className="input"
                     />
-                </div>
+                </FormGroup>
 
                 <button
-                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
                     onClick={handleSubmit}
+                    className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
                 >
-                    Uložiť profil
+                    Save Profile
                 </button>
             </form>
 
-            {/* Avatar Selection Modal */}
+
             <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} className="relative z-50">
                 <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
                 <div className="fixed inset-0 flex items-center justify-center p-4">
-                    <Dialog.Panel className="bg-white rounded p-6 max-w-sm w-full space-y-4">
-                        <Dialog.Title className="text-lg font-semibold">Vyber profilový obrázok</Dialog.Title>
+                    <Dialog.Panel className="bg-white rounded-lg p-6 max-w-sm w-full space-y-4">
+                        <Dialog.Title className="text-lg font-semibold text-gray-800">
+                            Choose an avatar
+                        </Dialog.Title>
                         <div className="grid grid-cols-4 gap-2">
                             {defaultAvatars.map((url) => (
                                 <img
@@ -165,20 +202,20 @@ export default function ProfileForm() {
                             ))}
                         </div>
 
-                        <div className="mt-4">
-                            <label className="block font-semibold mb-1">Vlastný URL</label>
+                        <div>
+                            <label className="block text-sm font-semibold mb-1">Custom URL</label>
                             <input
                                 type="text"
-                                className="w-full p-2 border rounded"
+                                className="input"
                                 placeholder="https://..."
                                 value={customAvatarUrl}
                                 onChange={(e) => setCustomAvatarUrl(e.target.value)}
                             />
                             <button
-                                className="mt-2 bg-blue-500 text-white px-3 py-1 rounded text-sm"
+                                className="mt-2 bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700 transition"
                                 onClick={() => handleAvatarSelect(customAvatarUrl)}
                             >
-                                Použiť URL
+                                Use URL
                             </button>
                         </div>
                     </Dialog.Panel>
@@ -187,3 +224,49 @@ export default function ProfileForm() {
         </div>
     );
 }
+
+
+function FormGroup({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+        <div>
+            <label className="block text-sm font-medium text-gray-800 mb-1">{label}</label>
+            {children}
+        </div>
+    );
+}
+
+
+const wrapperVariants = {
+    open: {
+        scaleY: 1,
+        opacity: 1,
+        transition: {
+            when: 'beforeChildren',
+            staggerChildren: 0.08,
+        },
+    },
+    closed: {
+        scaleY: 0,
+        opacity: 0,
+        transition: {
+            when: 'afterChildren',
+            staggerChildren: 0.05,
+        },
+    },
+};
+
+const itemVariants = {
+    open: {
+        opacity: 1,
+        y: 0,
+    },
+    closed: {
+        opacity: 0,
+        y: -10,
+    },
+};
+
+const iconVariants = {
+    open: { rotate: 180 },
+    closed: { rotate: 0 },
+};
