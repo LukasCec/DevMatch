@@ -108,7 +108,7 @@ export default function ProfileForm() {
                         name="techStack"
                         value={form.techStack.join(', ')}
                         onChange={handleTechStackChange}
-                        placeholder="e.g. React, Node.js, MongoDB"
+                        placeholder="React, Node.js, MongoDB"
                         className="input"
                     />
                 </FormGroup>
@@ -119,7 +119,7 @@ export default function ProfileForm() {
                         name="goal"
                         value={form.goal}
                         onChange={(e) => setForm({ ...form, goal: e.target.value })}
-                        placeholder="e.g. Looking for an open source teammate"
+                        placeholder="Looking for an open source teammate"
                         className="input"
                     />
                 </FormGroup>
@@ -131,7 +131,7 @@ export default function ProfileForm() {
                             className="w-full text-left px-4 py-2 bg-white input rounded-lg shadow-sm flex justify-between items-center text-sm font-medium text-gray-800 hover:bg-gray-50 transition"
                             whileTap={{ scale: 0.98 }}
                         >
-                            {form.level || 'Select level'}
+                            {form.level.toUpperCase() || 'Select level'}
                             <motion.span
                                 variants={iconVariants}
                                 animate={dropdownOpen ? 'open' : 'closed'}
@@ -156,7 +156,7 @@ export default function ProfileForm() {
                                         setDropdownOpen(false);
                                     }}
                                 >
-                                    {level}
+                                    {level.toWellFormed()}
                                 </motion.li>
                             ))}
                         </motion.ul>
@@ -169,7 +169,7 @@ export default function ProfileForm() {
                         name="availability"
                         value={form.availability}
                         onChange={(e) => setForm({ ...form, availability: e.target.value })}
-                        placeholder="e.g. evenings, weekends"
+                        placeholder="evenings, weekends"
                         className="input"
                     />
                 </FormGroup>
