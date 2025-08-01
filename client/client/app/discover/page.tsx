@@ -3,7 +3,13 @@
 import { useEffect, useState } from 'react';
 import { authFetch } from '@/lib/api';
 import { User } from '@/types/user';
-import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
+import {
+    motion,
+    useMotionValue,
+    useTransform,
+    AnimatePresence,
+    useAnimation,
+} from 'framer-motion';
 import Image from 'next/image';
 
 export default function DiscoverPage() {
@@ -19,7 +25,7 @@ export default function DiscoverPage() {
             const res = await authFetch(`http://localhost:5000/api/match/${id}`, {
                 method: 'POST',
             });
-            setMessage(res.message);
+            setMessage(``);
         }
 
         setUsers((prev) => prev.filter((u) => u._id !== id));
@@ -27,13 +33,48 @@ export default function DiscoverPage() {
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center px-4">
-            <h1 className="text-3xl font-bold mb-6 text-center">Discover Developers</h1>
-            {message && <p className="text-green-600 mb-4">{message}</p>}
+            <motion.h1
+                className="text-3xl font-bold mb-6 text-center"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+            >
+                Discover Developers
+            </motion.h1>
+
+            {message && (
+                <motion.p
+                    className="text-green-600 mb-4"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                >
+                    {message}
+                </motion.p>
+            )}
 
             <div className="relative w-full max-w-md h-[460px]">
-                <AnimatePresence>
+                <AnimatePresence mode="wait">
                     {users.length > 0 ? (
-                        <SwipeCard user={users[0]} onSwipe={handleSwipe} />
+                        <SwipeCard
+                            key={users[0]._id}
+                            user={users[0]}
+                            onSwipe={(dir) => {
+                                const userId = users[0]._id;
+
+                                if (dir === 'right') {
+                                    authFetch(`http://localhost:5000/api/match/${userId}`, {
+                                        method: 'POST',
+                                    }).then((res) =>
+                                        setMessage(``)
+                                    );
+                                }
+
+                                setTimeout(() => {
+                                    setUsers((prev) => prev.filter((u) => u._id !== userId));
+                                }, 300);
+                            }}
+                        />
                     ) : (
                         <motion.div
                             key="no-users"
@@ -55,30 +96,50 @@ function SwipeCard({
                        onSwipe,
                    }: {
     user: User;
-    onSwipe: (dir: 'left' | 'right', id: string) => void;
+    onSwipe: (dir: 'left' | 'right') => void;
 }) {
     const x = useMotionValue(0);
     const rotate = useTransform(x, [-200, 200], [-20, 20]);
+    const background = useTransform(
+        x,
+        [-150, 0, 150],
+        ['#fee2e2', '#ffffff', '#d1fae5']
+    );
 
-    const handleDragEnd = (_: any, info: any) => {
+    const controls = useAnimation();
+    const [swiped, setSwiped] = useState<null | 'left' | 'right'>(null);
+
+    useEffect(() => {
+        controls.start({ scale: 1, opacity: 1, y: 0 });
+    }, [controls]);
+
+    const handleDragEnd = async (_: any, info: any) => {
         if (info.offset.x > 150) {
-            onSwipe('right', user._id);
+            setSwiped('right');
+            await controls.start({ x: 1000, opacity: 0 });
         } else if (info.offset.x < -150) {
-            onSwipe('left', user._id);
+            setSwiped('left');
+            await controls.start({ x: -1000, opacity: 0 });
+        } else {
+            await controls.start({ x: 0 });
         }
     };
 
     return (
         <motion.div
-            key={user._id}
-            className="absolute w-full h-full bg-white rounded-xl shadow-lg p-6 flex flex-col items-center justify-center text-center"
-            style={{ x, rotate }}
+            className="absolute w-full h-full rounded-xl shadow-lg p-6 flex flex-col items-center justify-center text-center"
+            style={{ x, rotate, background }}
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
             onDragEnd={handleDragEnd}
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
+            initial={{ scale: 0.9, opacity: 0, y: 40 }}
+            animate={controls}
             exit={{ opacity: 0, scale: 0.8 }}
+            onAnimationComplete={() => {
+                if (swiped) {
+                    onSwipe(swiped);
+                }
+            }}
         >
             <Image
                 src={user.avatar || '/avatars/avatar1.png'}
@@ -87,12 +148,23 @@ function SwipeCard({
                 height={100}
                 className="rounded-full object-cover mb-4"
             />
-            <h2 className="text-xl font-semibold text-gray-800 mb-1">{user.name}</h2>
-            <p className="text-sm text-gray-600 mb-3">{user.goal || 'No goal specified'}</p>
-            <div className="text-xs text-gray-500">
-                <p><strong>Level:</strong> {user.level || 'N/A'}</p>
-                <p><strong>Availability:</strong> {user.availability || 'N/A'}</p>
-                <p><strong>Tech stack:</strong> {user.techStack?.join(', ') || 'N/A'}</p>
+            <h2 className="text-xl font-semibold text-gray-800 mb-1">
+                {user.name}
+            </h2>
+            <p className="text-sm text-gray-600 mb-3">
+                {user.goal || 'No goal specified'}
+            </p>
+            <div className="text-xs text-gray-500 space-y-1">
+                <p>
+                    <strong>Level:</strong> {user.level || 'N/A'}
+                </p>
+                <p>
+                    <strong>Availability:</strong> {user.availability || 'N/A'}
+                </p>
+                <p>
+                    <strong>Tech stack:</strong>{' '}
+                    {user.techStack?.join(', ') || 'N/A'}
+                </p>
             </div>
         </motion.div>
     );
