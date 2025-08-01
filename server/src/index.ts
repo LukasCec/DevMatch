@@ -6,6 +6,7 @@ import authRoutes from './routes/auth';
 import messageRoutes from './routes/messageRoutes';
 import matchRoutes from './routes/match';
 import userRoutes from './routes/user';
+import discoverRoutes from './routes/discover';
 import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import http from 'http';
@@ -33,6 +34,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/match', matchRoutes);
+app.use('/api/discover', discoverRoutes);
 
 
 io.use((socket, next) => {

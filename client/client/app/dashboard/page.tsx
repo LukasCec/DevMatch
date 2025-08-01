@@ -14,10 +14,12 @@ export default function DashboardPage() {
 
     if (!user) return <div>Loading...</div>;
 
+
+
     return (
         <div className="min-h-screen flex flex-col">
             {/* Hero Section */}
-            <section className="flex-1 flex flex-col justify-center items-center px-6 text-center">
+            <section className="flex-1  flex flex-col justify-center items-center px-6 text-center">
                 <h1 className="text-4xl sm:text-6xl font-bold text-gray-900 mb-4">
                     Welcome to <span className="text-blue-600">DevMatch</span>
                 </h1>
