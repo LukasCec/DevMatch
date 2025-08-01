@@ -5,7 +5,7 @@ export default function Home() {
       <div className="font-sans flex flex-col items-center justify-center min-h-screen  p-8 sm:p-20">
         <main className="text-center flex flex-col items-center gap-10">
           <h1 className="text-4xl sm:text-6xl font-bold text-gray-900">
-            Vitaj na <span className="text-blue-600">DevMatch</span>
+            Welcome to <span className="text-blue-600">DevMatch</span>
           </h1>
 
           <div className="flex gap-4 flex-wrap justify-center">
