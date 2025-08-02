@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {jwtDecode} from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
+import { motion } from 'framer-motion';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -25,22 +26,58 @@ export default function LoginPage() {
         if (res.ok) {
             const data = await res.json();
             localStorage.setItem('token', data.token);
-
-
             const decoded: JWTPayload = jwtDecode(data.token);
             localStorage.setItem('userId', decoded.id);
-
             router.push('/dashboard');
         } else {
-            alert('Neplatné prihlasovacie údaje');
+            alert('Invalid login credentials');
         }
     };
+
     return (
-        <div className="max-w-md mx-auto mt-20">
-            <h1 className="text-2xl font-bold mb-4">Sign-In</h1>
-            <input className="input mb-2 p-2 border" placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
-            <input className="input mb-4 p-2 " type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
-            <button className="bg-blue-600 hover:bg-blue-700 duration-300 text-white px-4 py-2 rounded" onClick={handleLogin}>Sign-In</button>
-        </div>
+        <motion.div
+            className="max-w-md mx-auto mt-20"
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+        >
+            <motion.h1
+                className="text-2xl font-bold mb-4 text-center"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+            >
+                Sign-In
+            </motion.h1>
+
+            <motion.input
+                className="input mb-2 p-2 border w-full"
+                placeholder="Email"
+                onChange={(e) => setEmail(e.target.value)}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+            />
+
+            <motion.input
+                className="input mb-4 p-2 border w-full"
+                type="password"
+                placeholder="Password"
+                onChange={(e) => setPassword(e.target.value)}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+            />
+
+            <motion.button
+                className="bg-blue-600 hover:bg-blue-700 duration-300 text-white px-4 py-2 rounded w-full"
+                onClick={handleLogin}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+            >
+                Sign-In
+            </motion.button>
+        </motion.div>
     );
 }
